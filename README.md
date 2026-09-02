@@ -2,6 +2,12 @@
 
 Clone social construído com Django REST Framework para o Projeto Final da EBAC.
 
+## Links da Entrega
+
+- Repositório: https://github.com/RodrigoRiRocha/projeto-final-ebac
+- Aplicação em produção: https://twitter-clone-ebac.vercel.app/api/social/
+- Health check: https://twitter-clone-ebac.vercel.app/health/
+
 ## Recursos
 
 - Cadastro e login com token.
@@ -50,8 +56,8 @@ persiste com segurança em funções serverless.
 
 Use uma chave aleatória longa para `DJANGO_SECRET_KEY` (por exemplo, gerada por
 `py -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`).
-O deploy executa migrations e coleta estáticos durante o build; não executa migrations
-durante requisições da aplicação.
+Execute `py manage.py migrate` antes do deploy sempre que existirem novas migrations.
+O entrypoint serverless não executa migrations durante requisições da aplicação.
 
 ## Autenticação
 
