@@ -51,6 +51,11 @@ class SocialApiTests(TestCase):
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertContains(response, 'chirp.')
 
+	def test_root_redirects_to_social_home(self):
+		response = self.client.get('/')
+
+		self.assertRedirects(response, '/api/social/', fetch_redirect_response=False)
+
 	def test_profile_can_be_updated_without_changing_all_fields(self):
 		self.authenticate_as(self.alice)
 

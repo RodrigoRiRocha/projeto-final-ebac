@@ -19,6 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
+from django.views.generic import RedirectView
 from rest_framework.routers import DefaultRouter
 
 from categories.views import CategoryViewSet
@@ -38,6 +39,7 @@ def health_check(request):
 
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='/api/social/', permanent=False), name='home'),
     path('admin/', admin.site.urls),
     path('health/', health_check, name='health-check'),
     path('hello/', hello_world, name='hello-world'),
