@@ -1,5 +1,4 @@
 {
-  "buildCommand": "uv run --with-requirements requirements.txt python manage.py migrate --noinput && uv run --with-requirements requirements.txt python manage.py collectstatic --noinput",
   "rewrites": [
     {
       "source": "/(.*)",
