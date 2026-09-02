@@ -35,6 +35,16 @@ class SocialApiTests(TestCase):
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertIn('token', response.data)
 
+	def test_registration_rejects_a_common_password(self):
+		response = self.client.post(
+			'/api/social/auth/register/',
+			{'username': 'weak-password-user', 'password': 'password123'},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+		self.assertIn('password', response.data)
+
 	def test_social_home_page_is_available(self):
 		response = self.client.get('/api/social/')
 
@@ -92,6 +102,37 @@ class SocialApiTests(TestCase):
 			'alice',
 		)
 
+		self.assertTrue(
+			self.client.get(f'/api/social/profiles/{self.bob.profile.id}/').data['is_following']
+		)
+		response = self.client.post(
+			f'/api/social/profiles/{self.bob.profile.id}/unfollow/',
+			format='json',
+		)
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertFalse(
+			self.client.get(f'/api/social/profiles/{self.bob.profile.id}/').data['is_following']
+		)
+
+	def test_posts_can_be_filtered_by_author_before_pagination(self):
+		for number in range(3):
+			Post.objects.create(author=self.alice, content=f'Alice post {number}')
+		Post.objects.create(author=self.bob, content='Bob post')
+
+		response = self.client.get('/api/social/posts/?author=alice')
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data['count'], 3)
+		self.assertTrue(all(post['author'] == 'alice' for post in response.data['results']))
+
+	def test_profile_lookup_accepts_username_with_period(self):
+		user = User.objects.create_user(username='ana.costa', password='ana-pass-123')
+
+		response = self.client.get('/api/social/profiles/by-username/ana.costa/')
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data['username'], user.username)
+
 	def test_user_can_like_and_comment_on_a_post(self):
 		post = Post.objects.create(author=self.bob, content='A post to interact with')
 		self.authenticate_as(self.alice)
@@ -99,6 +140,10 @@ class SocialApiTests(TestCase):
 		response = self.client.post(f'/api/social/posts/{post.id}/like/', format='json')
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertEqual(response.data['likes_count'], 1)
+		self.assertTrue(self.client.get(f'/api/social/posts/{post.id}/').data['is_liked'])
+		response = self.client.delete(f'/api/social/posts/{post.id}/unlike/')
+		self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+		self.assertFalse(self.client.get(f'/api/social/posts/{post.id}/').data['is_liked'])
 
 		response = self.client.post(
 			f'/api/social/posts/{post.id}/comments/',
@@ -107,6 +152,22 @@ class SocialApiTests(TestCase):
 		)
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 		self.assertEqual(response.data['author'], 'alice')
+
+	def test_posts_and_comments_reject_whitespace_only_content(self):
+		post = Post.objects.create(author=self.bob, content='A post to validate')
+		self.authenticate_as(self.alice)
+
+		post_response = self.client.post('/api/social/posts/', {'content': '   '}, format='json')
+		comment_response = self.client.post(
+			f'/api/social/posts/{post.id}/comments/',
+			{'content': '   '},
+			format='json',
+		)
+
+		self.assertEqual(post_response.status_code, status.HTTP_400_BAD_REQUEST)
+		self.assertIn('content', post_response.data)
+		self.assertEqual(comment_response.status_code, status.HTTP_400_BAD_REQUEST)
+		self.assertIn('content', comment_response.data)
 
 	def test_only_author_can_update_post_and_anonymous_requests_are_rejected(self):
 		post = Post.objects.create(author=self.bob, content='Private editing')

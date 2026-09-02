@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from .models import Post, Profile
+from .pagination import SocialPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import CommentSerializer, PostSerializer, ProfileSerializer, RegisterSerializer
 
@@ -44,6 +45,7 @@ def asset(request, filename):
 
 class RegisterView(APIView):
 	permission_classes = (AllowAny,)
+	throttle_scope = 'auth'
 
 	def post(self, request):
 		serializer = RegisterSerializer(data=request.data)
@@ -55,6 +57,8 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
 	permission_classes = (AllowAny,)
+
+	throttle_scope = 'auth'
 
 	def post(self, request):
 		user = authenticate(
@@ -74,8 +78,9 @@ class ProfileViewSet(ReadOnlyModelViewSet):
 	queryset = Profile.objects.select_related('user')
 	serializer_class = ProfileSerializer
 	permission_classes = (AllowAny,)
+	pagination_class = SocialPagination
 
-	@action(detail=False, methods=('get',), url_path='by-username/(?P<username>[^/.]+)')
+	@action(detail=False, methods=('get',), url_path='by-username/(?P<username>[^/]+)')
 	def by_username(self, request, username=None):
 		profile = self.get_queryset().get(user__username=username)
 		return Response(self.get_serializer(profile).data)
@@ -109,18 +114,28 @@ class ProfileViewSet(ReadOnlyModelViewSet):
 	@action(detail=True, methods=('get',), permission_classes=(IsAuthenticated,))
 	def following(self, request, pk=None):
 		profile = self.get_object()
-		return Response(self.get_serializer(profile.following.all(), many=True).data)
+		return Response(self.get_serializer(profile.following.order_by('user__username'), many=True).data)
 
 	@action(detail=True, methods=('get',), permission_classes=(IsAuthenticated,))
 	def followers(self, request, pk=None):
 		profile = self.get_object()
-		return Response(self.get_serializer(profile.followers.all(), many=True).data)
+		return Response(self.get_serializer(profile.followers.order_by('user__username'), many=True).data)
 
 
 class PostViewSet(ModelViewSet):
-	queryset = Post.objects.select_related('author').prefetch_related('likes', 'comments__author')
+	queryset = Post.objects.select_related('author__profile').prefetch_related(
+		'likes', 'comments__author__profile'
+	)
 	serializer_class = PostSerializer
 	permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly)
+	pagination_class = SocialPagination
+
+	def get_queryset(self):
+		queryset = super().get_queryset()
+		author = self.request.query_params.get('author')
+		if author:
+			queryset = queryset.filter(author__username=author)
+		return queryset
 
 	def perform_create(self, serializer):
 		serializer.save(author=self.request.user)

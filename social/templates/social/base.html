@@ -12,11 +12,15 @@
       <aside class="navigation" aria-label="Navegação principal">
         <a class="wordmark" href="/api/social/">chirp.</a>
         <nav>
-          <a href="/api/social/">Início</a>
-          <a href="/api/social/explore/">Explorar</a>
-          <a href="/api/social/settings/">Perfil</a>
+          <a href="/api/social/" data-nav="home">Início</a>
+          <a href="/api/social/explore/" data-nav="explore">Explorar</a>
+          <a href="/api/social/settings/" data-nav="settings">Perfil</a>
         </nav>
         <button class="primary-action" data-open-auth>Entrar</button>
+        <a class="account-summary" href="/api/social/settings/" hidden>
+          <span class="account-avatar" aria-hidden="true"></span>
+          <span><strong class="account-name"></strong><small class="account-handle"></small></span>
+        </a>
       </aside>
 
       <main class="content">{% block content %}{% endblock %}</main>
@@ -28,18 +32,18 @@
           <button data-open-auth>Entrar ou criar conta</button>
         </div>
         <div class="rail-card">
-          <h2>Em alta</h2>
-          <a href="/api/social/explore/?q=django">Django REST Framework</a>
-          <a href="/api/social/explore/?q=python">Python</a>
-          <a href="/api/social/explore/?q=tecnologia">Tecnologia</a>
+          <h2>Pessoas para conhecer</h2>
+          <a href="/api/social/explore/?q=ana">Ana Costa</a>
+          <a href="/api/social/explore/?q=bruno">Bruno Lima</a>
+          <a href="/api/social/explore/?q=carla">Carla Mendes</a>
         </div>
       </aside>
     </div>
 
     <nav class="mobile-nav" aria-label="Navegação móvel">
-      <a href="/api/social/">Início</a>
-      <a href="/api/social/explore/">Explorar</a>
-      <a href="/api/social/settings/">Perfil</a>
+      <a href="/api/social/" data-nav="home">Início</a>
+      <a href="/api/social/explore/" data-nav="explore">Explorar</a>
+      <a href="/api/social/settings/" data-nav="settings">Perfil</a>
     </nav>
 
     <section class="auth-layer" id="auth-layer" hidden aria-label="Autenticação">

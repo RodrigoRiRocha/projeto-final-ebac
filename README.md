@@ -37,10 +37,21 @@ DJANGO_SECRET_KEY=<chave-secreta>
 DJANGO_DEBUG=false
 DJANGO_ALLOWED_HOSTS=.vercel.app
 DATABASE_URL=<url-postgresql>
+DJANGO_CSRF_TRUSTED_ORIGINS=https://seu-projeto.vercel.app
+DJANGO_SMTP_HOST=<host-smtp>
+DJANGO_SMTP_PORT=587
+DJANGO_SMTP_USERNAME=<usuario-smtp>
+DJANGO_SMTP_PASSWORD=<senha-smtp>
+DJANGO_SMTP_USE_TLS=true
 ```
 
 Use PostgreSQL em produção. O SQLite é mantido apenas para desenvolvimento local e não
 persiste com segurança em funções serverless.
+
+Use uma chave aleatória longa para `DJANGO_SECRET_KEY` (por exemplo, gerada por
+`py -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`).
+O deploy executa migrations e coleta estáticos durante o build; não executa migrations
+durante requisições da aplicação.
 
 ## Autenticação
 
