@@ -1,5 +1,10 @@
 {
   "buildCommand": "python manage.py migrate --noinput && python manage.py collectstatic --noinput",
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12"
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
