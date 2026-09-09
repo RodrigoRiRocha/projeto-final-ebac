@@ -1,3 +1,5 @@
+import secrets
+
 import hashlib
 import hmac
 
@@ -31,7 +33,7 @@ class CategorySerializerTests(TestCase):
 class CategoryViewSetTests(TestCase):
 	def setUp(self):
 		self.client = APIClient()
-		user = User.objects.create_user(username='api-user', password='secret')
+		user = User.objects.create_user(username='api-user', password=secrets.token_urlsafe(32))
 		token = Token.objects.create(user=user)
 		self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
