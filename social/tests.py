@@ -1,5 +1,10 @@
+import secrets
+from io import StringIO
+
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import CommonPasswordValidator
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -11,8 +16,9 @@ from .models import Post
 class SocialApiTests(TestCase):
 	def setUp(self):
 		self.client = APIClient()
-		self.alice = User.objects.create_user(username='alice', password='alice-pass-123')
-		self.bob = User.objects.create_user(username='bob', password='bob-pass-123')
+		self.password = secrets.token_urlsafe(32)
+		self.alice = User.objects.create_user(username='alice', password=self.password)
+		self.bob = User.objects.create_user(username='bob', password=self.password)
 
 	def authenticate_as(self, user):
 		token, _ = Token.objects.get_or_create(user=user)
@@ -21,7 +27,7 @@ class SocialApiTests(TestCase):
 	def test_register_and_login_return_a_token(self):
 		response = self.client.post(
 			'/api/social/auth/register/',
-			{'username': 'carol', 'password': 'carol-pass-123'},
+			{'username': 'carol', 'password': self.password},
 			format='json',
 		)
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -29,16 +35,20 @@ class SocialApiTests(TestCase):
 
 		response = self.client.post(
 			'/api/social/auth/login/',
-			{'username': 'carol', 'password': 'carol-pass-123'},
+			{'username': 'carol', 'password': self.password},
 			format='json',
 		)
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertIn('token', response.data)
 
 	def test_registration_rejects_a_common_password(self):
+		self.password = next(
+			password for password in sorted(CommonPasswordValidator().passwords)
+			if len(password) >= 8 and not password.isdigit()
+		)
 		response = self.client.post(
 			'/api/social/auth/register/',
-			{'username': 'weak-password-user', 'password': 'password123'},
+			{'username': 'weak-password-user', 'password': self.password},
 			format='json',
 		)
 
@@ -58,12 +68,13 @@ class SocialApiTests(TestCase):
 
 	def test_profile_can_be_updated_without_changing_all_fields(self):
 		self.authenticate_as(self.alice)
+		updated_password = secrets.token_urlsafe(32)
 
 		response = self.client.patch(
 			'/api/social/profiles/me/',
 			{
 				'first_name': 'Alice',
-				'password': 'new-alice-pass-123',
+				'password': updated_password,
 				'avatar': SimpleUploadedFile(
 					'avatar.gif',
 					b'GIF87a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;',
@@ -76,7 +87,8 @@ class SocialApiTests(TestCase):
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertEqual(response.data['first_name'], 'Alice')
 		self.alice.refresh_from_db()
-		self.assertTrue(self.alice.check_password('new-alice-pass-123'))
+		self.assertTrue(self.alice.check_password(updated_password))
+		self.assertFalse(self.alice.check_password(self.password))
 		self.assertTrue(self.alice.profile.avatar.name.startswith('avatars/avatar'))
 
 	def test_following_user_populates_personalized_feed(self):
@@ -131,7 +143,7 @@ class SocialApiTests(TestCase):
 		self.assertTrue(all(post['author'] == 'alice' for post in response.data['results']))
 
 	def test_profile_lookup_accepts_username_with_period(self):
-		user = User.objects.create_user(username='ana.costa', password='ana-pass-123')
+		user = User.objects.create_user(username='ana.costa', password=self.password)
 
 		response = self.client.get('/api/social/profiles/by-username/ana.costa/')
 
@@ -190,4 +202,23 @@ class SocialApiTests(TestCase):
 		)
 		self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-# Create your tests here.
+class SeedSocialSecurityTests(TestCase):
+	def test_demo_accounts_have_no_usable_password(self):
+		call_command('seed_social', stdout=StringIO())
+
+		self.assertEqual(User.objects.count(), 8)
+		self.assertTrue(all(not user.has_usable_password() for user in User.objects.all()))
+
+		call_command('seed_social', stdout=StringIO())
+
+		self.assertEqual(User.objects.count(), 8)
+		self.assertTrue(all(not user.has_usable_password() for user in User.objects.all()))
+
+	def test_seed_does_not_overwrite_existing_account_password(self):
+		password = secrets.token_urlsafe(32)
+		user = User.objects.create_user(username='ana.costa', password=password)
+
+		call_command('seed_social', stdout=StringIO())
+
+		user.refresh_from_db()
+		self.assertTrue(user.check_password(password))
