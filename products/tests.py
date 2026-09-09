@@ -1,3 +1,5 @@
+import secrets
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework import status
@@ -61,7 +63,7 @@ class ProductSerializerTests(TestCase):
 class ProductViewSetTests(TestCase):
 	def setUp(self):
 		self.client = APIClient()
-		user = User.objects.create_user(username='api-user', password='secret')
+		user = User.objects.create_user(username='api-user', password=secrets.token_urlsafe(32))
 		token = Token.objects.create(user=user)
 		self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 		self.category = Category.objects.create(name='Programming')
