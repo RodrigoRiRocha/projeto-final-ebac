@@ -58,7 +58,7 @@ class Command(BaseCommand):
 				defaults={'first_name': first_name, 'last_name': last_name},
 			)
 			if created:
-				user.set_password('demo-social-2026')
+				user.set_unusable_password()
 				user.save()
 			profile = user.profile
 			profile.avatar_url = f'https://i.pravatar.cc/300?img={avatar_number}'
